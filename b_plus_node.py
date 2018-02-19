@@ -38,23 +38,27 @@ class Leaf:
             self.parent = Node(None, None, [self.next.keys[0]], [self, self.next], branching_factor=self.branching_factor)
             self.next.parent = self.parent
         else:
-            self.parent.register_child(self.next.keys[0], self.next)
+            self.parent.add_child(self.next.keys[0], self.next)
         return self.next
 
     def remove_item(self, key):
         del_index = self.keys.index(key)
         self.keys.pop(del_index)
         removed_item = self.children.pop(del_index)
+        self.balance()
+        return removed_item
+
+    def balance(self):
         if not self.is_root() and self.size() < self.branching_factor // 2:
             # Borrow from siblings
             if self.previous is not None and self.previous.size() > self.branching_factor // 2:
                 self.keys.insert(0, self.previous.keys.pop(-1))
                 self.children.insert(0, self.previous.children.pop(-1))
-                self.parent.amend_key(self.keys[0], self.keys[0])
+                self.parent.change_key(self.keys[0], self.keys[0])
             elif self.next is not None and self.next.size() > self.branching_factor // 2: 
                 self.keys.insert(-1, self.next.keys.pop(0))
                 self.children.insert(-1, self.next.children.pop(0))
-                self.next.parent.amend_key(self.keys[0], self.next.keys[0])
+                self.next.parent.change_key(self.keys[0], self.next.keys[0])
             # Merge. Always merge left.
             elif self.previous is not None:
                 del_key = self.previous.keys[-1]
@@ -66,7 +70,6 @@ class Leaf:
                 self.keys.extend(self.next.keys)
                 self.children.extend(self.next.children)
                 self.parent.remove_child(del_key)
-        return removed_item
 
     def is_root(self):
         return self.parent is None
@@ -94,7 +97,7 @@ class Node:
                 return
         self.children[i + 1].set(key, value)
 
-    def register_child(self, key, greater_child):
+    def add_child(self, key, greater_child):
         # Childs keys must all be greater than key
         index = bisect.bisect(self.keys, key)
         self.keys.insert(index, key)
@@ -104,12 +107,12 @@ class Node:
             self.split(self.branching_factor // 2)
 
 
-    def amend_key(self, old_key, new_key):
+    def change_key(self, old_key, new_key):
         """Replaces the first key that is greater or equal than
         old_key with new_key or modifies the parent's key so that new_key
         falls within the current node"""
         if new_key < self.keys[0]:
-            self.parent.amend_key(self.keys[0], new_key)
+            self.parent.change_key(self.keys[0], new_key)
         for i, k in enumerate(self.keys):
             if k >= old_key:
                 self.keys[i] = new_key
@@ -124,7 +127,7 @@ class Node:
         if self.is_root():
             self.parent = Node(None, None, [split_key], [self, self.next], branching_factor=self.branching_factor)
         else:
-            self.parent.register_child(split_key, self.next)
+            self.parent.add_child(split_key, self.next)
         return self.next
 
     def remove_item(self, key):
@@ -151,16 +154,20 @@ class Node:
                 if removed_child.next is not None:
                     removed_child.next.previous = removed_child.previous
                 break
+        self.balance()
+        return removed_child
+
+    def balance(self):
         # Borrow from siblings if necessary
         if not self.is_root() and self.size() < self.branching_factor // 2:
             if self.previous is not None and self.previous.size() > self.branching_factor // 2:
                 self.keys.insert(0, self.previous.keys.pop(-1))
                 self.children.insert(0, self.previous.children.pop(-1))
-                self.parent.amend_key(self.keys[0], self.keys[0])
+                self.parent.change_key(self.keys[0], self.keys[0])
             elif self.next is not None and self.next.size() > self.branching_factor // 2: 
                 self.keys.insert(-1, self.next.keys.pop(0))
                 self.children.insert(-1, self.next.children.pop(0))
-                self.next.parent.amend_key(self.keys[0], self.next.keys[0])
+                self.next.parent.change_key(self.keys[0], self.next.keys[0])
             # Merge. Always merge left.
             elif self.previous is not None:
                 del_key = self.previous.keys[-1]
@@ -176,7 +183,6 @@ class Node:
         if self.is_root() and len(self.children) == 1:
             # TODO: make child root of greater tree
             self.children[0].parent = None
-        return removed_child
 
     def is_root(self):
         return self.parent is None
