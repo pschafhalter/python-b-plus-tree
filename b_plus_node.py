@@ -97,6 +97,15 @@ class Node:
                 return
         self.children[i + 1].set(key, value)
 
+
+    def get(self, key):
+        # TODO: speed up finding the right bucket
+        for i, k in enumerate(self.keys):
+            if key < k:
+                return self.children[i].get(key)
+        return self.children[i + 1].get(key)
+
+
     def add_child(self, key, greater_child):
         # Childs keys must all be greater than key
         index = bisect.bisect(self.keys, key)
